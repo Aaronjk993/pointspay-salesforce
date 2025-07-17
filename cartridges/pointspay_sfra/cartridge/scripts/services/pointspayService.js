@@ -16,7 +16,6 @@ var PointspayService = {
         var environment = paymentMethod.getCustom().pointspayEnvironment;
         var consumerKey = environment.value === 'TEST' ? paymentMethod.getCustom().pointspayTestConsumerKey : paymentMethod.getCustom().pointspayLiveConsumerKey;
         var privateKey = environment.value === 'TEST' ? paymentMethod.getCustom().pointspayTestPrivateKey : paymentMethod.getCustom().pointspayLivePrivateKey;
-        var certificate = environment.value === 'TEST' ? paymentMethod.getCustom().pointspayTestCertificate : paymentMethod.getCustom().pointspayLiveCertificate;
         var debugMode = paymentMethod.getCustom().pointspayDebugMode;
 
         var oAuthHeaders = {
