@@ -84,19 +84,20 @@ server.post(
     csrfProtection.generateToken,
     function (req, res) {
         var OrderMgr = require('dw/order/OrderMgr');
+        var Resource = require('dw/web/Resource');
         var URLUtils = require('dw/web/URLUtils');
         var Logger = require('dw/system/Logger');
         var parameters = req.httpParameterMap;
         var orderNo = parameters.get('order_id').value;
         var orderToken = '';
-        var pointspayUrl =  pointspayUrl = dw.web.URLUtils.url('Checkout-Begin', 'stage', 'payment', 'paymentError', dw.web.Resource.msg('error.technical', 'checkout', null));
+        var pointspayUrl =  pointspayUrl = URLUtils.url('Checkout-Begin', 'stage', 'payment', 'paymentError', Resource.msg('error.technical', 'checkout', null));
 
         if (orderNo) {
             var order = OrderMgr.getOrder(orderNo);
             if (order) {
                 var validationService = require('*/cartridge/scripts/services/validationService');
                 if (validationService.verifyRedirectRequest(parameters, STATUS.SUCCESS)) {
-                    pointspayUrl = dw.web.URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString();
+                    pointspayUrl = URLUtils.url('Order-Confirm', 'ID', order.orderNo, 'token', order.orderToken).toString();
                     orderToken = order.orderToken;
 
                     res.render('/checkout/pointspayform', {
@@ -135,24 +136,24 @@ server.post(
     server.middleware.https,
     csrfProtection.generateToken,
     function (req, res) {
+        var BasketMgr = require('dw/order/BasketMgr');
         var OrderMgr = require('dw/order/OrderMgr');
+        var Resource = require('dw/web/Resource');
         var URLUtils = require('dw/web/URLUtils');
         var Logger = require('dw/system/Logger');
         var parameters = req.httpParameterMap;
         var orderNo = parameters.get('order_id').value;
         var orderToken = '';
-        var pointspayUrl =  pointspayUrl = dw.web.URLUtils.url('Checkout-Begin', 'stage', 'payment', 'paymentError', dw.web.Resource.msg('error.technical', 'checkout', null));
+        var pointspayUrl =  pointspayUrl = URLUtils.url('Checkout-Begin', 'stage', 'payment', 'paymentError', Resource.msg('error.technical', 'checkout', null));
 
         if (orderNo) {
             var order = OrderMgr.getOrder(orderNo);
             if (order) {
                 var validationService = require('*/cartridge/scripts/services/validationService');
                 if (validationService.verifyRedirectRequest(parameters, STATUS.CANCELED)) {    
-                    var URLUtils = require('dw/web/URLUtils');
                     var Transaction = require('dw/system/Transaction');
-
                     Transaction.wrap(function () {
-                        var basketFromOrder = dw.order.BasketMgr.createBasketFromOrder(order);
+                        var basketFromOrder = BasketMgr.createBasketFromOrder(order);
                         var status = dw.order.OrderMgr.cancelOrder(order);
                         if (status.code === 'ERROR') {
                             dw.system.Logger.getLogger('Pointspay', 'pointspay').error(`Error while cancelling order with ID ${orderNo}`);
@@ -160,14 +161,12 @@ server.post(
                             order.setCancelCode('POINTSPAY_CANCELLED');
                             order.setCancelDescription('Order has been cancelled on Pointspay');
                             
-                            var currentBasket = dw.order.BasketMgr.getCurrentOrNewBasket();
-
+                            var currentBasket = BasketMgr.getCurrentOrNewBasket();
                             if (order.customerEmail) {
                                 currentBasket.setCustomerEmail(order.customerEmail);
                             }
         
                             var productLineItems = basketFromOrder.getAllProductLineItems();
-                            
                             productLineItems.toArray().forEach(function (item) {
                                 currentBasket.createProductLineItem(item.productID, currentBasket.defaultShipment)
                                     .setQuantityValue(item.quantityValue);
@@ -175,7 +174,6 @@ server.post(
 
                             var originalShipment = basketFromOrder.defaultShipment;
                             var currentShipment = currentBasket.defaultShipment;
-
                             if (originalShipment.shippingMethod) {
                                 currentShipment.setShippingMethod(originalShipment.shippingMethod);
                             }
@@ -223,13 +221,9 @@ server.post(
             Logger.getLogger('Pointspay', 'pointspay').error('Order ID missing in the Pointspay redirect request');
         }
 
-        var URLUtils = require('dw/web/URLUtils');
-        var pointspayUrl = dw.web.URLUtils.url('Cart-Show').toString()
-
+        var pointspayUrl = URLUtils.url('Cart-Show').toString();
         res.redirect(pointspayUrl);
-
         this.emit('route:Complete', req, res);
-        
         return;
     }
 );
@@ -247,39 +241,37 @@ server.post(
     server.middleware.https,
     csrfProtection.generateToken,
     function (req, res) {
+        var BasketMgr = require('dw/order/BasketMgr');
         var OrderMgr = require('dw/order/OrderMgr');
+        var Resource = require('dw/web/Resource');
         var URLUtils = require('dw/web/URLUtils');
         var Logger = require('dw/system/Logger');
         var parameters = req.httpParameterMap;
         var orderNo = parameters.get('order_id').value;
         var orderToken = '';
-        var pointspayUrl =  pointspayUrl = dw.web.URLUtils.url('Checkout-Begin', 'stage', 'payment', 'paymentError', dw.web.Resource.msg('error.technical', 'checkout', null));
+        var pointspayUrl =  pointspayUrl = URLUtils.url('Checkout-Begin', 'stage', 'payment', 'paymentError', Resource.msg('error.technical', 'checkout', null));
 
         if (orderNo) {
             var order = OrderMgr.getOrder(orderNo);
             if (order) {
                 var validationService = require('*/cartridge/scripts/services/validationService');
                 if (validationService.verifyRedirectRequest(parameters, STATUS.FAILED)) {    
-                    var URLUtils = require('dw/web/URLUtils');
                     var Transaction = require('dw/system/Transaction');
-
                     Transaction.wrap(function () {
-                        var basketFromOrder = dw.order.BasketMgr.createBasketFromOrder(order);
-                        var status = dw.order.OrderMgr.cancelOrder(order);
+                        var basketFromOrder = BasketMgr.createBasketFromOrder(order);
+                        var status = OrderMgr.cancelOrder(order);
                         if (status.code === 'ERROR') {
                             dw.system.Logger.getLogger('Pointspay', 'pointspay').error(`Error while cancelling order with ID ${orderNo}`);
                         } else {
                             order.setCancelCode('POINTSPAY_FAILED');
                             order.setCancelDescription('Order has been failed on Pointspay');
                             
-                            var currentBasket = dw.order.BasketMgr.getCurrentOrNewBasket();
-
+                            var currentBasket = BasketMgr.getCurrentOrNewBasket();
                             if (order.customerEmail) {
                                 currentBasket.setCustomerEmail(order.customerEmail);
                             }
         
                             var productLineItems = basketFromOrder.getAllProductLineItems();
-                            
                             productLineItems.toArray().forEach(function (item) {
                                 currentBasket.createProductLineItem(item.productID, currentBasket.defaultShipment)
                                     .setQuantityValue(item.quantityValue);
@@ -287,7 +279,6 @@ server.post(
 
                             var originalShipment = basketFromOrder.defaultShipment;
                             var currentShipment = currentBasket.defaultShipment;
-
                             if (originalShipment.shippingMethod) {
                                 currentShipment.setShippingMethod(originalShipment.shippingMethod);
                             }
@@ -323,9 +314,7 @@ server.post(
                     });
 
                     res.redirect(pointspayUrl);
-
                     this.emit('route:Complete', req, res);
-                    
                     return;
                 } else {
                     Logger.getLogger('Pointspay', 'pointspay').error('Failure redirect validation failed');
@@ -335,11 +324,8 @@ server.post(
             Logger.getLogger('Pointspay', 'pointspay').error('Order ID missing in the Pointspay redirect request');
         }
 
-        var URLUtils = require('dw/web/URLUtils');
-        var pointspayUrl = dw.web.URLUtils.url('Cart-Show').toString();
-
+        var pointspayUrl = URLUtils.url('Cart-Show').toString();
         res.redirect(pointspayUrl);
-
         this.emit('route:Complete', req, res);
         
         return;
